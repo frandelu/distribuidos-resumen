@@ -642,3 +642,691 @@ Esto permite reconstruir estado después de una falla, reprocesar eventos con un
 El replay es una diferencia importante frente a sistemas de mensajería donde los mensajes desaparecen una vez consumidos y confirmados.
 
 </details>
+
+## 31. Sistemas distribuidos
+
+**Pregunta:**  
+Un sistema distribuido puede pensarse igual que una computadora multicore, porque en ambos casos hay varios procesadores ejecutando tareas en paralelo sobre una memoria compartida.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+En una computadora multicore, los procesadores suelen compartir memoria. En un sistema distribuido, cada nodo tiene su propia memoria local y se comunica con los demás mediante mensajes.
+
+Esta diferencia cambia completamente el modelo de programación. No hay memoria global inmediata, no hay locks locales compartidos entre nodos y no existe una visión instantánea única del estado del sistema.
+
+</details>
+
+---
+
+## 32. Sistemas distribuidos
+
+**Pregunta:**  
+Una falla parcial ocurre cuando una parte del sistema falla, pero otras partes continúan funcionando.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+Las fallas parciales son una característica central de los sistemas distribuidos.
+
+Un nodo puede estar caído, otro puede seguir respondiendo, la red entre dos máquinas puede estar rota y un tercer nodo puede tener una visión diferente del estado. Esto hace que detectar y manejar fallas sea más difícil que en un sistema de una sola máquina.
+
+</details>
+
+---
+
+## 33. RPC
+
+**Pregunta:**  
+Si un cliente hace una llamada RPC y no recibe respuesta, siempre puede concluir que el servidor nunca ejecutó la operación.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+La falta de respuesta no permite distinguir entre varios casos:
+
+- el request nunca llegó;
+- el servidor recibió el request pero falló antes de ejecutarlo;
+- el servidor ejecutó la operación pero la respuesta se perdió;
+- la red está lenta;
+- el servidor está vivo pero saturado.
+
+Por eso, los sistemas distribuidos deben diseñar cuidadosamente la semántica de reintentos e idempotencia.
+
+</details>
+
+---
+
+## 34. MapReduce
+
+**Pregunta:**  
+En MapReduce, si una tarea `map` falla, el framework puede reejecutarla porque su salida depende únicamente del input y de la función `map`, siempre que esta sea determinística.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+La tolerancia a fallas de MapReduce se apoya fuertemente en la reejecución de tareas.
+
+Si una tarea `map` falla, el master puede reasignarla a otro worker. Como la tarea procesa el mismo split de entrada y la función `map` debería ser determinística, se espera que produzca la misma salida intermedia.
+
+Esto sería mucho más difícil si las tareas tuvieran efectos laterales externos o dependieran de estado mutable no controlado.
+
+</details>
+
+---
+
+## 35. MapReduce
+
+**Pregunta:**  
+El uso de combiners en MapReduce siempre preserva la corrección del resultado, sin importar qué operación esté implementando el reducer.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+Un combiner solo es seguro cuando la operación permite combinar resultados parciales sin cambiar la semántica final.
+
+Por ejemplo, sumar apariciones de palabras permite usar un combiner, porque sumar parcialmente y luego volver a sumar da el mismo resultado.
+
+Pero no todas las operaciones cumplen esta propiedad. Si el reducer depende del orden, de todos los valores completos o de una operación no asociativa, usar un combiner podría cambiar el resultado.
+
+</details>
+
+---
+
+## 36. MapReduce
+
+**Pregunta:**  
+El master de MapReduce puede convertirse en un punto crítico del sistema porque mantiene el estado de las tareas y coordina la asignación de trabajo.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+El master mantiene metadata sobre tareas `idle`, `in-progress` y `completed`, asigna trabajo a workers, detecta fallas y registra la ubicación de archivos intermedios.
+
+Esto simplifica el diseño, pero lo convierte en un componente central. Si el master falla, el job puede verse afectado, aunque los datos estén distribuidos entre muchos workers.
+
+</details>
+
+---
+
+## 37. Sharding
+
+**Pregunta:**  
+El sharding facilita las consultas que involucran joins o transacciones entre muchos shards, porque cada máquina puede resolver su parte de manera independiente sin coordinación.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+El sharding ayuda cuando las operaciones pueden resolverse dentro de un único shard o cuando las claves están bien distribuidas.
+
+Pero si una consulta necesita datos de varios shards, aparecen problemas adicionales: joins distribuidos, agregaciones globales, transacciones distribuidas, coordinación entre nodos y posibles cuellos de botella.
+
+Por eso, el diseño de la clave de particionado es una decisión muy importante.
+
+</details>
+
+---
+
+## 38. Replicación
+
+**Pregunta:**  
+En una máquina de estados replicada, si todas las réplicas parten del mismo estado inicial y aplican las mismas operaciones en el mismo orden, entonces terminan en el mismo estado final, suponiendo operaciones determinísticas.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+Esta es la idea central de la replicación por máquina de estados.
+
+El problema difícil no es aplicar operaciones localmente, sino lograr que todas las réplicas acuerden el mismo conjunto de operaciones y el mismo orden. De ahí surge la necesidad de logs replicados, consenso, líderes, quórums o protocolos similares.
+
+</details>
+
+---
+
+## 39. Logs replicados
+
+**Pregunta:**  
+El log en un sistema replicado sirve solamente como mecanismo de auditoría; no participa en la definición del orden de las operaciones.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+El log es una abstracción central porque define el orden total de las operaciones.
+
+Si todas las réplicas aplican el mismo log en el mismo orden, llegan al mismo estado. Por eso, en sistemas como Raft, el objetivo del protocolo es mantener un log replicado consistente entre nodos.
+
+</details>
+
+---
+
+## 40. GFS
+
+**Pregunta:**  
+En GFS, el tamaño grande de los chunks reduce la cantidad de metadata que debe manejar el master.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+GFS usa chunks grandes, típicamente de 64 MB.
+
+Esto reduce la cantidad total de chunks para archivos muy grandes. Al haber menos chunks, el master debe mantener menos metadata: menos mappings de archivo a chunk y menos ubicaciones de réplicas.
+
+La contracara es que GFS queda más orientado a archivos grandes y cargas batch que a muchos archivos pequeños.
+
+</details>
+
+---
+
+## 41. GFS
+
+**Pregunta:**  
+El lease de la primary replica en GFS ayuda a evitar que dos réplicas actúen simultáneamente como primary del mismo chunk.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+El master otorga a una réplica un permiso temporal para actuar como primary de un chunk.
+
+Mientras el lease está vigente, esa réplica define el orden de las mutaciones. Si el master pierde contacto con ella, debe tener cuidado antes de elegir una nueva primary, porque la primary vieja podría seguir viva pero aislada.
+
+El lease limita temporalmente la autoridad de la primary y ayuda a evitar split brain.
+
+</details>
+
+---
+
+## 42. Raft
+
+**Pregunta:**  
+En Raft, los heartbeats son mensajes especiales totalmente distintos de `AppendEntries`.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+En Raft, un heartbeat puede verse como un `AppendEntries` vacío.
+
+No necesariamente lleva nuevas entradas de log, pero sirve para indicar que el líder sigue vivo, evitar que los followers inicien elecciones y comunicar información como el `commitIndex`.
+
+</details>
+
+---
+
+## 43. Raft
+
+**Pregunta:**  
+En un clúster Raft de 5 nodos, una partición de 2 nodos puede seguir aceptando escrituras si uno de esos nodos era el líder antes de la partición.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+Con 5 nodos, la mayoría es 3.
+
+Aunque el líder viejo quede en la partición de 2 nodos, no puede comitear nuevas entradas porque no consigue mayoría. Puede intentar agregar entradas localmente o replicarlas al follower que todavía ve, pero no debe responder `OK` al cliente.
+
+La partición con mayoría es la única que puede elegir líder y avanzar de forma segura.
+
+</details>
+
+---
+
+## 44. Raft
+
+**Pregunta:**  
+Raft garantiza que toda entrada escrita alguna vez en algún log sobrevivirá a futuras elecciones de líder.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+Raft no garantiza que sobrevivan todas las entradas escritas en algún nodo.
+
+Una entrada no comiteada puede sobrevivir si el nodo que la tiene se convierte en líder y logra replicarla. Pero también puede ser descartada si se elige como líder un nodo que no la tenía.
+
+Lo que Raft garantiza es que no se pierden entradas ya comiteadas.
+
+</details>
+
+---
+
+## 45. Raft
+
+**Pregunta:**  
+Si dos logs tienen una entrada con el mismo índice y el mismo término, Raft asume que esa entrada contiene el mismo comando.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+Esta es la Log Matching Property.
+
+La combinación `(index, term)` permite detectar puntos de coincidencia entre logs. Si un follower tiene una entrada con el mismo índice y término que el líder, entonces se considera que los logs coinciden hasta ese punto.
+
+Esto permite que el líder borre sufijos conflictivos y sincronice followers atrasados o divergentes.
+
+</details>
+
+---
+
+## 46. ZooKeeper
+
+**Pregunta:**  
+ZooKeeper está pensado principalmente para almacenar grandes archivos de datos, de manera similar a GFS.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+ZooKeeper no está diseñado como almacenamiento masivo de archivos.
+
+Su modelo de datos parece un filesystem jerárquico, con paths y znodes, pero está pensado para coordinación: configuración, locks, elección de líder, watches y metadata pequeña.
+
+Para archivos grandes o procesamiento batch, sistemas como GFS encajan mucho mejor.
+
+</details>
+
+---
+
+## 47. ZooKeeper
+
+**Pregunta:**  
+La operación `sync` en ZooKeeper puede usarse para acercar una lectura a una semántica más fuerte, haciendo que el servidor se ponga al día antes de responder.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+ZooKeeper permite lecturas desde followers para mejorar throughput, pero esas lecturas pueden estar atrasadas.
+
+La operación `sync` sirve para que el cliente fuerce una sincronización con el líder antes de leer. Esto permite obtener una lectura más actualizada que una lectura local común.
+
+No significa que todas las lecturas de ZooKeeper sean linealizables por defecto, sino que existe un mecanismo para pedir mayor frescura cuando hace falta.
+
+</details>
+
+---
+
+## 48. Caches
+
+**Pregunta:**  
+Un cache con hit ratio alto reduce la carga sobre la base de datos porque muchas lecturas se resuelven sin consultar el storage persistente.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+El cache no solo mejora la latencia individual de ciertas consultas, sino que también protege a la base de datos.
+
+Si el 98% de las lecturas se responden desde cache, solo el 2% llega a la base. Esto reduce la presión sobre conexiones, CPU, locks, índices y disco.
+
+Por eso los caches se usan como mecanismo de escalabilidad, no solamente como optimización cosmética.
+
+</details>
+
+---
+
+## 49. Caches
+
+**Pregunta:**  
+El problema de thundering herd ocurre cuando muchos clientes intentan rellenar simultáneamente la misma clave de cache luego de un miss.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+Si una clave muy popular desaparece del cache, muchos clientes pueden detectar miss al mismo tiempo y consultar la base para reconstruir el mismo valor.
+
+Esto puede generar una avalancha de consultas repetidas a la base de datos. Facebook usa leases en Memcache para limitar cuántos clientes tienen permiso para rellenar una clave en un intervalo determinado.
+
+</details>
+
+---
+
+## 50. Dynamo
+
+**Pregunta:**  
+En Dynamo, el uso de consistent hashing busca evitar que agregar o quitar un nodo obligue a redistribuir casi todas las claves del sistema.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+Con hashing simple del tipo:
+
+```text
+server = hash(key) mod N
+```
+
+si cambia `N`, muchísimas claves cambian de servidor.
+
+Consistent hashing organiza servidores y claves en un anillo. Al agregar un nodo, solo se mueve una porción del rango de claves, no todo el dataset. Esto permite escalar de forma incremental.
+
+</details>
+
+---
+
+## 51. Dynamo
+
+**Pregunta:**  
+En Dynamo, los nodos virtuales sirven para mejorar el balance de carga y facilitar la redistribución de datos cuando cambia la membresía del clúster.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+Cada máquina física puede aparecer muchas veces en el anillo como varios nodos virtuales.
+
+Esto reduce la varianza en la cantidad de claves asignadas a cada máquina. También permite que, al agregar un nodo nuevo, reciba pequeñas porciones de muchos nodos existentes en lugar de una única porción grande.
+
+</details>
+
+---
+
+## 52. Dynamo
+
+**Pregunta:**  
+Los Merkle trees permiten comparar réplicas de manera eficiente porque, si los hashes de un subárbol coinciden, no hace falta comparar todas las claves de ese rango.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+Un Merkle tree resume rangos de datos mediante hashes.
+
+Si dos réplicas tienen la misma raíz para un rango, se asume que ese rango coincide. Si difieren, se baja en el árbol hasta encontrar qué subrangos o claves son distintas.
+
+Esto permite reparar divergencias sin transferir toda la tabla.
+
+</details>
+
+---
+
+## 53. Gossip
+
+**Pregunta:**  
+Un protocolo de gossip requiere que exista un coordinador central que le envíe periódicamente a todos los nodos la visión correcta del clúster.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+Gossip es una estrategia descentralizada.
+
+Cada nodo mantiene una visión local del estado del clúster y periódicamente intercambia información con otros nodos. La información se propaga como un rumor.
+
+No todos los nodos conocen inmediatamente la misma información, pero el sistema converge eventualmente.
+
+</details>
+
+---
+
+## 54. Transacciones distribuidas
+
+**Pregunta:**  
+La serializabilidad exige que una ejecución concurrente de transacciones sea equivalente a alguna ejecución serial de esas mismas transacciones.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+Una ejecución serializable puede tener operaciones intercaladas internamente, pero el resultado debe ser equivalente a ejecutar las transacciones una por una en algún orden.
+
+Por ejemplo, si una transacción transfiere saldo entre dos cuentas y otra lee ambas cuentas, la lectura no debería observar un estado intermedio imposible bajo cualquier orden serial.
+
+</details>
+
+---
+
+## 55. Two-Phase Locking
+
+**Pregunta:**  
+En Two-Phase Locking, una transacción puede liberar un lock y luego pedir otro lock nuevo, siempre que todavía no haya hecho commit.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+La regla central de 2PL es que hay dos fases:
+
+1. fase expansiva: se adquieren locks;
+2. fase contractiva: se liberan locks.
+
+Una vez que la transacción libera un lock, ya no puede pedir locks nuevos. Esta restricción es la que permite garantizar serializabilidad.
+
+En strict 2PL, los locks se mantienen hasta commit o abort.
+
+</details>
+
+---
+
+## 56. Two-Phase Commit
+
+**Pregunta:**  
+Los mensajes `commit` y `abort` en 2PC conviene que sean idempotentes, porque pueden reenviarse durante recuperación o ante pérdida de respuestas.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+En sistemas distribuidos, los mensajes pueden perderse o duplicarse.
+
+Si el coordinador no recibe respuesta a un `commit`, puede reenviarlo. El participante debe poder recibir el mismo `commit(tx_id)` más de una vez sin aplicar efectos duplicados ni romper su estado.
+
+Lo mismo vale para `abort`.
+
+</details>
+
+---
+
+## 57. Bitcoin
+
+**Pregunta:**  
+Bitcoin resuelve el problema de double spend imponiendo un líder fijo que ordena todas las transacciones, de manera similar a Raft.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+Bitcoin no tiene un líder fijo.
+
+El orden de las transacciones surge de la cadena de bloques aceptada por la red. Los mineros compiten mediante Proof of Work para proponer bloques. Cuando aparece un bloque válido, otros nodos lo verifican y construyen encima.
+
+Esto reemplaza al líder estable de Raft por una elección probabilística basada en poder de cómputo.
+
+</details>
+
+---
+
+## 58. Bitcoin
+
+**Pregunta:**  
+Modificar una transacción vieja en Bitcoin cambia el hash del bloque que la contiene y obliga a rehacer el trabajo de los bloques posteriores si se quisiera mantener una cadena válida.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+Cada bloque contiene el hash del bloque anterior.
+
+Si se modifica una transacción vieja, cambia el hash de su bloque. Como el bloque siguiente incluye ese hash, también queda invalidado, y así sucesivamente.
+
+Para reescribir la historia, un atacante tendría que rehacer el Proof of Work de ese bloque y de todos los bloques posteriores, y además alcanzar o superar a la cadena honesta.
+
+</details>
+
+---
+
+## 59. Spanner
+
+**Pregunta:**  
+MVCC permite que una lectura en Spanner obtenga una versión histórica consistente de una clave, en lugar de bloquearse necesariamente esperando la última escritura.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+MVCC guarda múltiples versiones de una clave, cada una asociada a un timestamp.
+
+Si una transacción lee en timestamp `T`, obtiene la versión más reciente con timestamp menor o igual a `T`.
+
+Esto permite lecturas de snapshot sin locks, siempre que la réplica tenga información suficiente para saber que está actualizada hasta ese timestamp.
+
+</details>
+
+---
+
+## 60. Spanner
+
+**Pregunta:**  
+El problema de usar relojes físicos en sistemas distribuidos es que todos los relojes están perfectamente sincronizados, pero leerlos es demasiado lento.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+El problema es justamente que los relojes físicos no están perfectamente sincronizados.
+
+Cada máquina puede tener drift, latencia al consultar fuentes de tiempo y diferencias respecto de otras máquinas. Spanner usa TrueTime para trabajar con intervalos de incertidumbre, no con un instante exacto perfecto.
+
+Esa incertidumbre debe ser considerada para garantizar consistencia externa.
+
+</details>
+
+---
+
+## 61. Mensajería
+
+**Pregunta:**  
+Una dead-letter queue sirve para almacenar mensajes que fallaron repetidamente y no pudieron ser procesados correctamente por los consumidores.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+Un mensaje problemático, o poison pill, puede hacer fallar a todos los consumidores que intentan procesarlo.
+
+Para evitar que vuelva infinitamente a la cola principal, se puede configurar una cantidad máxima de intentos. Al superar ese límite, el mensaje se mueve a una dead-letter queue.
+
+Esto permite inspeccionarlo, corregir el bug o reprocesarlo manualmente.
+
+</details>
+
+---
+
+## 62. Mensajería
+
+**Pregunta:**  
+El patrón SNS + SQS permite que cada consumidor tenga su propia cola y procese eventos a su propio ritmo.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+SNS puede hacer fan-out del evento a varias colas SQS.
+
+Cada consumidor lee desde su propia cola. Si un consumidor está caído, sus mensajes se acumulan sin afectar necesariamente a los demás. Esto desacopla la publicación del evento de la disponibilidad y velocidad de cada servicio consumidor.
+
+</details>
+
+---
+
+## 63. Stream processing
+
+**Pregunta:**  
+Un stream es un dataset cerrado, por lo que el sistema puede esperar a tener todos los eventos antes de empezar a procesar.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+Un stream es potencialmente infinito o unbounded.
+
+Los eventos siguen llegando continuamente. Por eso, los sistemas de stream processing procesan eventos a medida que aparecen y usan mecanismos como ventanas temporales, watermarks y estado incremental.
+
+Esperar a “tener todo” convertiría el problema en batch, pero en streaming ese final no existe.
+
+</details>
+
+---
+
+## 64. Stream processing
+
+**Pregunta:**  
+Un join entre dos streams suele requerir mantener estado temporal, porque puede llegar primero el evento de un stream y más tarde el evento relacionado del otro.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es verdadera.**
+
+En un stream-stream join, los eventos relacionados pueden llegar desordenados o con distinta latencia.
+
+Por ejemplo, para correlacionar una push notification con una apertura de app dentro de los 5 minutos siguientes, el sistema debe recordar temporalmente eventos de push y esperar posibles accesos relacionados.
+
+El estado se puede descartar cuando el watermark o la ventana indique que ya no deberían llegar eventos relevantes.
+
+</details>
+
+---
+
+## 65. Stream processing
+
+**Pregunta:**  
+El microbatching elimina por completo el problema de eventos tardíos, porque cada lote pequeño representa exactamente todos los eventos de ese intervalo.
+
+<details>
+<summary><strong>Ver respuesta</strong></summary>
+
+**La afirmación es falsa.**
+
+El microbatching reduce la latencia frente al batch tradicional, pero no elimina los eventos tardíos.
+
+Un evento con `event_time` de las 8:00:05 puede llegar después de que el microbatch correspondiente ya fue procesado. El sistema todavía debe decidir si ignora el evento, emite una corrección, reabre la ventana o usa watermarks.
+
+</details>
+

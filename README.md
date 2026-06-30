@@ -1,4 +1,4 @@
-# Resumen de Apuntes - Sistemas Distribuidos I
+# Resumen Sistemas Distribuidos I - Espina
 
 En este repo hay resúmenes de apuntes de la materia **Sistemas Distribuidos I** de la catedra Espina.
 
